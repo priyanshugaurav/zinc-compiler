@@ -280,6 +280,39 @@ void gen_expr(std::ofstream &out, const Expr *expr, CodeGenContext &ctx)
                 out << "    mov rax, r12\n"; // total printed
                 out << "    pop r12\n";
             }
+            else if (idc->name == "scan")
+            {
+                out << "    mov rax, 0\n";
+                out << "    mov rdi, 0\n";
+                out << "    lea rsi, [rel input_buf]\n";
+                out << "    mov rdx, 32\n";
+                out << "    syscall\n";
+
+                out << "    mov rcx, 0\n";         // accumulator
+                out << "    mov rsi, input_buf\n"; // pointer to buffer
+                out << "    mov rdx, rax\n";       // bytes read
+
+                std::string loopLabel = gen_label("scan_loop");
+                std::string doneLabel = gen_label("scan_done");
+
+                out << loopLabel << ":\n";
+                out << "    cmp rdx, 0\n";
+                out << "    je " << doneLabel << "\n";
+                out << "    mov al, byte [rsi]\n";
+                out << "    cmp al, '0'\n";
+                out << "    jl skip_char_" << loopLabel << "\n";
+                out << "    cmp al, '9'\n";
+                out << "    jg skip_char_" << loopLabel << "\n";
+                out << "    sub al, '0'\n";
+                out << "    imul rcx, rcx, 10\n";
+                out << "    add rcx, rax\n";
+                out << "skip_char_" << loopLabel << ":\n";
+                out << "    inc rsi\n";
+                out << "    dec rdx\n";
+                out << "    jmp " << loopLabel << "\n";
+                out << doneLabel << ":\n";
+                out << "    mov rax, rcx\n"; // integer return in rax
+            }
 
             else
             {

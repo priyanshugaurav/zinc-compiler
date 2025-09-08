@@ -1,0 +1,57 @@
+// Recursive factorial
+fn factorial(n: int) : int {
+    if (n <= 1) {
+        return 1;
+    } else {
+        return n * factorial(n - 1);
+    }
+}
+
+// Fibonacci using recursion
+fn fib(n: int) : int {
+    if (n <= 1) {
+        return n;
+    } else {
+        return fib(n - 1) + fib(n - 2);
+    }
+}
+
+// Sum of numbers using a loop
+fn sum_upto(n: int) : int {
+    let total: int = 0;
+    let i: int = 1;
+    while (i <= n) {
+        total = total + i;
+        i = i + 1;
+    }
+    return total;
+}
+
+// Check even/odd using if/else
+fn is_even(n: int) : int {
+    if (n % 2 == 0) {
+        return 1;   // true
+    } else {
+        return 0;   // false
+    }
+}
+
+fn main() {
+    let n: int = 7;
+
+    let fact: int = factorial(n);
+    print("Factorial of ", n, " = ", fact, "\n");
+
+    let fib_n: int = fib(n);
+    print("Fibonacci(", n, ") = ", fib_n, "\n");
+
+    let s: int = sum_upto(n);
+    print("Sum upto ", n, " = ", s, "\n");
+
+    let even_check: int = is_even(n);
+    if (even_check == 1) {
+        print(n, " is even\n");
+    } else {
+        print(n, " is odd\n");
+    }
+}

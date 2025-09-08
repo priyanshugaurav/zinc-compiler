@@ -15,6 +15,7 @@ enum class TokenType
     While,
     Return,
     Print,
+    Scan, 
     True,
     False,
 
