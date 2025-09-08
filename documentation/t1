@@ -1,0 +1,222 @@
+Zinc Language Syntax Specification
+1. File Structure
+
+A Zinc program is a sequence of function declarations.
+
+The program starts executing from main() function.
+
+Supports functions, statements, expressions.
+
+2. Comments
+
+Single line comments start with // and go till the end of the line.
+
+No multi-line comments (yet).
+
+3. Functions
+fn function_name(param1, param2, ...) {
+    // function body (block statement)
+}
+
+
+fn keyword starts function declaration.
+
+Functions can have zero or more parameters.
+
+Parameters are identifiers (no explicit types yet).
+
+Function body is a block { ... }.
+
+Example:
+
+fn main() {
+    print("Hello, Zinc!\n");
+}
+
+4. Statements
+4.1 Block Statements
+{
+    stmt1;
+    stmt2;
+    ...
+}
+
+
+Curly braces enclose zero or more statements.
+
+Used for function bodies and control flow.
+
+4.2 Let Statements (Variable Declaration)
+let variable_name = expression;
+
+
+Declares a variable with initial value.
+
+Variables are local to the function/block.
+
+No explicit type declaration needed.
+
+Must be initialized at declaration.
+
+Example:
+
+let x = 10;
+let y = 20 + 5;
+
+4.3 Expression Statements
+expression;
+
+
+Any expression can be used as a statement.
+
+Useful for function calls like print(...).
+
+Example:
+
+print("Hello");
+
+4.4 Return Statement
+return expression;
+
+
+Returns value from a function.
+
+Return expression is optional (empty return not yet supported?).
+
+Example:
+
+return x + y;
+
+4.5 If Statement
+if condition {
+    then_branch_statements;
+} else {
+    else_branch_statements;
+}
+
+
+else branch is optional.
+
+Condition is an expression that evaluates to integer (0 = false, non-zero = true).
+
+Example:
+
+if x < 10 {
+    print("Less than 10\n");
+} else {
+    print("10 or more\n");
+}
+
+4.6 While Loop
+while condition {
+    loop_body_statements;
+}
+
+
+Executes loop body while condition is true (non-zero).
+
+Condition is an expression.
+
+Example:
+
+let i = 0;
+while i < 10 {
+    print(i);
+    i = i + 1;
+}
+
+5. Expressions
+5.1 Literals
+
+Integer literals: e.g., 42, 0, -10 (support for unary minus not explicit yet)
+
+String literals: enclosed in double quotes, e.g., "Hello\n"
+
+5.2 Identifiers
+
+Variable and function names: letters, digits, underscores, starting with a letter or underscore.
+
+5.3 Binary Operators
+
+Supported binary operators include:
+
+Operator	Meaning
++	Addition
+-	Subtraction
+*	Multiplication
+/	Division
+%	Modulo
+=	Assignment
+==	Equality
+!=	Inequality
+<	Less than
+<=	Less than or equal
+>	Greater than
+>=	Greater than or equal
+&&	Logical AND
+`	
+&	Bitwise AND
+`	`
+^	Bitwise XOR
+<<	Left shift
+>>	Right shift
+
+Note: Assignment = is right-associative and used only in expressions like x = y + 1;.
+
+5.4 Function Calls
+function_name(arg1, arg2, ...);
+
+
+Call a function with zero or more arguments.
+
+Arguments are expressions.
+
+Example:
+
+print("Number: ");
+print(x);
+
+6. Built-in Functions
+
+print(...) — prints string or integer to stdout.
+
+Strings are printed literally.
+
+Integers are converted and printed.
+
+print can take multiple arguments, printing them sequentially.
+
+Example:
+
+print("Hello, ");
+print(123);
+print("\n");
+
+7. Variable Scoping and Lifetime
+
+Variables declared with let are local to their function or block.
+
+No global variables (yet).
+
+Variables must be declared before use.
+
+8. Example Program
+fn main() {
+    let i = 0;
+    while i <= 3 {
+        print("Number: ");
+        print(i);
+        print("\n");
+        i = i + 1;
+    }
+}
+
+Summary Table of Syntax
+Construct	Syntax Example
+Function	fn foo(x, y) { ... }
+Variable	let x = 10;
+Return	return x + 1;
+If	if x == 0 { ... } else { ... }
+While	while x < 10 { ... }
+Expression	a + b * 2, x = 5, foo(1, 2)
+Print	print("Hello"); print(x);
