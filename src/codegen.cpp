@@ -1,5 +1,6 @@
 #include "codegen.h"
 #include <fstream>
+#include <functional>
 #include <iostream>
 
 static int label_count = 0;
@@ -81,9 +82,25 @@ void gen_expr(std::ofstream &out, const Expr *expr, CodeGenContext &ctx)
     }
     else if (auto id = dynamic_cast<const Identifier *>(expr))
     {
-        if (ctx.locals.count(id->name))
-            out << "    mov rax,[rbp-" << ctx.locals[id->name] << "]\n";
+        // Prefer codegen env lookup; fall back to semantic symbol's stackOffset
+        try
+        {
+            int off = ctx.lookupLocal(id->name);
+            out << "    mov rax,[rbp-" << off << "]\n";
+        }
+        catch (...)
+        {
+            if (ctx.semEnv)
+            {
+                auto s = ctx.semEnv->lookup(id->name);
+                if (s && s->stackOffset)
+                {
+                    out << "    mov rax,[rbp-" << s->stackOffset << "]\n";
+                }
+            }
+        }
     }
+
     else if (auto bin = dynamic_cast<const BinaryExpr *>(expr))
     {
         gen_expr(out, bin->left.get(), ctx);
@@ -333,33 +350,78 @@ void gen_stmt(std::ofstream &out, const Stmt *stmt, CodeGenContext &ctx)
 {
     if (auto f = dynamic_cast<const FunctionDecl *>(stmt))
     {
-        ctx.locals.clear();
+        // reset context for new function
+        ctx.envStack.clear();
+        ctx.envStack.emplace_back();
         ctx.stack_offset = 0;
 
-        // calculate parameter + local stack offsets first
+        // allocate params first (so params are at lower offsets)
         static const std::string regs[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
         for (size_t i = 0; i < f->params.size(); ++i)
         {
-            ctx.stack_offset += 8;
-            ctx.locals[f->params[i].first] = ctx.stack_offset;
+            int off = ctx.allocateLocal(f->params[i].first);
+            // we don't emit mov regs->stack until after prologue below
         }
-        if (auto b = dynamic_cast<const BlockStmt *>(f->body.get()))
-            for (auto &s : b->stmts)
-                if (auto l = dynamic_cast<const LetStmt *>(s.get()))
-                    ctx.stack_offset += 8, ctx.locals[l->name] = ctx.stack_offset;
 
+        // Pre-scan function body for let-decls (recursively) and allocate offsets
+        std::function<void(const Stmt *)> preScan = [&](const Stmt *s)
+        {
+            if (!s)
+                return;
+            if (auto b = dynamic_cast<const BlockStmt *>(s))
+            {
+                for (auto &st : b->stmts)
+                    preScan(st.get());
+            }
+            else if (auto l = dynamic_cast<const LetStmt *>(s))
+            {
+                ctx.allocateLocal(l->name);
+            }
+            else if (auto iff = dynamic_cast<const IfStmt *>(s))
+            {
+                preScan(iff->thenBranch.get());
+                if (iff->elseBranch)
+                    preScan(iff->elseBranch.get());
+            }
+            else if (auto wh = dynamic_cast<const WhileStmt *>(s))
+            {
+                preScan(wh->body.get());
+            }
+            else if (auto fn = dynamic_cast<const FunctionDecl *>(s))
+            {
+                // nested function: don't include its locals in parent function frame
+            }
+        };
+
+        if (auto b = dynamic_cast<const BlockStmt *>(f->body.get()))
+            preScan(b);
+
+        // emit label / prologue
         out << f->name << ":\n";
         out << "    push rbp\n    mov rbp,rsp\n";
         out << "    sub rsp," << ctx.stack_offset << "\n";
 
-        // move parameters to stack
+        // now move parameters to their allocated stack slots
         for (size_t i = 0; i < f->params.size(); ++i)
-            out << "    mov [rbp-" << ctx.locals[f->params[i].first] << "]," << regs[i] << "\n";
+        {
+            int off;
+            try
+            {
+                off = ctx.lookupLocal(f->params[i].first);
+            }
+            catch (...)
+            {
+                continue;
+            }
+            out << "    mov [rbp-" << off << "]," << regs[i] << "\n";
+        }
 
+        // generate body
         gen_stmt(out, f->body.get(), ctx);
 
         out << "    leave\n    ret\n";
     }
+
     else if (auto b = dynamic_cast<const BlockStmt *>(stmt))
         for (auto &s : b->stmts)
             gen_stmt(out, s.get(), ctx);
@@ -368,9 +430,11 @@ void gen_stmt(std::ofstream &out, const Stmt *stmt, CodeGenContext &ctx)
         if (l->init)
         {
             gen_expr(out, l->init.get(), ctx);
-            out << "    mov [rbp-" << ctx.locals[l->name] << "],rax\n";
+            int off = ctx.lookupLocal(l->name);
+            out << "    mov [rbp-" << off << "],rax\n";
         }
     }
+
     else if (auto r = dynamic_cast<const ReturnStmt *>(stmt))
     {
         if (r->value)
